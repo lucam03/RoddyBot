@@ -8,7 +8,8 @@ const sharp = require("sharp");
 const tf = require("@tensorflow/tfjs-node");
 const axios = require("axios");
 
-var currentPrediction = "havent seen any images yet";
+var currentPredictions = {};
+
 var model;
 
 const loadModel = async () => {
@@ -25,9 +26,10 @@ const predictCats = async (imgUrl, message) => {
       .toBuffer()
       .then(async (data) => {
         data = tf.node.decodeImage(data);
-        let prediction = await model.detect(data)
+        let prediction = await model.detect(data);
+        console.log("Guesses for"+imgUrl+":");
         console.log(prediction);
-        currentPrediction = prediction.length ? prediction[0].class : "unsure";
+        currentPredictions[message.channel] = prediction.length ? prediction[0].class : "unsure";
         for (let i = 0; i < prediction.length; i++){
           if (prediction[i].class == "cat") {
             message.channel.send("roddy");
@@ -48,13 +50,13 @@ client.once("ready", () => {
 client.login(config.token);
 
 client.on("message", message => {
-  if (message.attachments.size > 0) {
-    for (let i=0; i<message.attachments.size; i++) {
+  if (message.attachments.size) {
+    for (let i = 0; i < message.attachments.size; i++) {
       let id = message.attachments.keyArray()[i];
       let image = message.attachments.get(id);
       predictCats(image.url, message);
     }
-  } else if (message.content.length > 0) {
+  } else if (message.content.length) {
     let text = message.content.split(" ");
     for (let i=0; i<text.length; i++) {
       let extension = text[i].slice(-4).toLowerCase();
@@ -64,7 +66,7 @@ client.on("message", message => {
     }
   }
   if (message.content === `${prefix}guess`) {
-    console.log("sending")
-    message.channel.send(currentPrediction);
+    console.log("Guessing...")
+    message.channel.send(currentPredictions[message.channel] ? currentPredictions[message.channel] : "i havent seen any pictures yet");
   }
 });
