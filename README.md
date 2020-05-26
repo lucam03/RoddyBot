@@ -1,0 +1,2 @@
+# RoddyBot
+A discord bot
