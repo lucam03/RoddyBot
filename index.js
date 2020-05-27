@@ -1,19 +1,21 @@
 const Discord = require("discord.js");
-const client = new Discord.Client();
-const config = require("./config.json");
-const prefix = config.prefix;
-
+const _ = require("underscore");
 const cocoSsd = require("@tensorflow-models/coco-ssd");
 const sharp = require("sharp");
 const tf = require("@tensorflow/tfjs-node");
 const axios = require("axios");
+const config = require("./config.json");
+
+const client = new Discord.Client();
+const prefix = config.prefix;
 
 var currentPredictions = {};
-
 var model;
 
 const loadModel = async () => {
+  console.log("Loading model...")
   model = await cocoSsd.load();
+  console.log("Ready!");
 }
 
 const predictCats = async (imgUrl, message) => {
@@ -27,14 +29,12 @@ const predictCats = async (imgUrl, message) => {
       .then(async (data) => {
         data = tf.node.decodeImage(data);
         let prediction = await model.detect(data);
-        console.log("Guesses for"+imgUrl+":");
+        console.log("Guess(es) for "+imgUrl+":");
         console.log(prediction);
-        currentPredictions[message.channel] = prediction.length ? prediction[0].class : "unsure";
-        for (let i = 0; i < prediction.length; i++){
-          if (prediction[i].class == "cat") {
-            message.channel.send("roddy");
-            break;
-          }
+        allPredictions = _.uniq(_.pluck(prediction, "class"));
+        currentPredictions[message.channel] = prediction.length ? allPredictions : "unsure";
+        if (allPredictions.includes("cat")) {
+          message.channel.send("roddy");
         }
       })
       .catch((err) => console.log(err)
@@ -44,7 +44,6 @@ const predictCats = async (imgUrl, message) => {
 
 client.once("ready", () => {
   loadModel();
-  console.log("Ready!");
 });
 
 client.login(config.token);
